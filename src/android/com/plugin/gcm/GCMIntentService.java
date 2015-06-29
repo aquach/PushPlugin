@@ -128,7 +128,7 @@ public class GCMIntentService extends GCMBaseIntentService {
 
     ArrayList<String> lines = extras.getString("inboxLines");
     if (lines) {
-      Notification.InboxStyle style = new Notification.InboxStyle();
+      Notification.InboxStyle style = new Notification.InboxStyle()
         .setContentTitle(extras.getString("inboxTitle"))
         .setSummaryText(extras.getString("inboxSummary"));
 
