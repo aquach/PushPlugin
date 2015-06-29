@@ -19,7 +19,7 @@ import com.google.android.gcm.GCMBaseIntentService;
 public class GCMIntentService extends GCMBaseIntentService {
 
 	private static final String TAG = "GCMIntentService";
-	
+
 	public GCMIntentService() {
 		super("GCMIntentService");
 	}
@@ -89,7 +89,7 @@ public class GCMIntentService extends GCMBaseIntentService {
 		notificationIntent.putExtra("pushBundle", extras);
 
 		PendingIntent contentIntent = PendingIntent.getActivity(this, 0, notificationIntent, PendingIntent.FLAG_UPDATE_CURRENT);
-		
+
 		int defaults = Notification.DEFAULT_ALL;
 
 		if (extras.getString("defaults") != null) {
@@ -97,11 +97,12 @@ public class GCMIntentService extends GCMBaseIntentService {
 				defaults = Integer.parseInt(extras.getString("defaults"));
 			} catch (NumberFormatException e) {}
 		}
-		
+
 		NotificationCompat.Builder mBuilder =
 			new NotificationCompat.Builder(context)
 				.setDefaults(defaults)
 				.setSmallIcon(context.getApplicationInfo().icon)
+        .setLargeIcon(context.getApplicationInfo().icon)
 				.setWhen(System.currentTimeMillis())
 				.setContentTitle(extras.getString("title"))
 				.setTicker(extras.getString("title"))
@@ -115,13 +116,36 @@ public class GCMIntentService extends GCMBaseIntentService {
 			mBuilder.setContentText("<missing message content>");
 		}
 
+    Boolean noVibrate = extras.getBoolean("novibrate");
+    if (noVibrate) {
+      mBuilder.setPriority(NotificationCompat.PRIORITY_LOW);
+    }
+
+		Boolean bigView = extras.getBoolean("bigview");
+		if (bigView) {
+			mBuilder.setStyle(new NotificationCompat.BigTextStyle().bigText(message));
+		}
+
+    ArrayList<String> lines = extras.getString("inboxLines");
+    if (lines) {
+      Notification.InboxStyle style = new Notification.InboxStyle();
+        .setContentTitle(extras.getString("inboxTitle"))
+        .setSummaryText(extras.getString("inboxSummary"));
+
+      for (String line: lines) {
+        style.addLine(lines);
+      }
+
+      mBuilder.setStyle(style);
+    }
+
 		String msgcnt = extras.getString("msgcnt");
 		if (msgcnt != null) {
 			mBuilder.setNumber(Integer.parseInt(msgcnt));
 		}
-		
+
 		int notId = 0;
-		
+
 		try {
 			notId = Integer.parseInt(extras.getString("notId"));
 		}
@@ -131,20 +155,20 @@ public class GCMIntentService extends GCMBaseIntentService {
 		catch(Exception e) {
 			Log.e(TAG, "Number format exception - Error parsing Notification ID" + e.getMessage());
 		}
-		
+
 		mNotificationManager.notify((String) appName, notId, mBuilder.build());
 	}
-	
+
 	private static String getAppName(Context context)
 	{
-		CharSequence appName = 
+		CharSequence appName =
 				context
 					.getPackageManager()
 					.getApplicationLabel(context.getApplicationInfo());
-		
+
 		return (String)appName;
 	}
-	
+
 	@Override
 	public void onError(Context context, String errorId) {
 		Log.e(TAG, "onError - errorId: " + errorId);
