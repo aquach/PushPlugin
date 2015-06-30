@@ -2,14 +2,21 @@ package com.plugin.gcm;
 
 import org.json.JSONException;
 import org.json.JSONObject;
+import org.json.JSONArray;
+
+import java.util.ArrayList;
 
 import android.annotation.SuppressLint;
 import android.app.Notification;
 import android.app.NotificationManager;
+import android.content.res.Resources;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.os.Bundle;
+import android.text.Html;
 import android.support.v4.app.NotificationCompat;
 import android.util.Log;
 
@@ -92,51 +99,68 @@ public class GCMIntentService extends GCMBaseIntentService {
 
 		int defaults = Notification.DEFAULT_ALL;
 
+    Log.d(TAG, "Bundle: " + extras);
+
 		if (extras.getString("defaults") != null) {
 			try {
 				defaults = Integer.parseInt(extras.getString("defaults"));
 			} catch (NumberFormatException e) {}
 		}
 
+    Bitmap iconBitmap = BitmapFactory.decodeResource(getResources(), context.getApplicationInfo().icon);
+
+		final Resources res = context.getResources();
+		int smallIcon = context.getApplicationInfo().icon;
+
+		// Get small icon and hardcoded large substitute
+		final String iconName = extras.getString("icon");
+		if (iconName != null) {
+			smallIcon = res.getIdentifier(iconName, "drawable", context.getPackageName());
+    }
+
 		NotificationCompat.Builder mBuilder =
 			new NotificationCompat.Builder(context)
 				.setDefaults(defaults)
-				.setSmallIcon(context.getApplicationInfo().icon)
-        .setLargeIcon(context.getApplicationInfo().icon)
+				.setSmallIcon(smallIcon)
+        .setLargeIcon(iconBitmap)
 				.setWhen(System.currentTimeMillis())
-				.setContentTitle(extras.getString("title"))
-				.setTicker(extras.getString("title"))
+				.setContentTitle(Html.fromHtml(extras.getString("title")))
+				.setTicker(Html.fromHtml(extras.getString("title")))
 				.setContentIntent(contentIntent)
 				.setAutoCancel(true);
 
-		String message = extras.getString("message");
-		if (message != null) {
-			mBuilder.setContentText(message);
-		} else {
-			mBuilder.setContentText("<missing message content>");
-		}
-
-    Boolean noVibrate = extras.getBoolean("novibrate");
-    if (noVibrate) {
-      mBuilder.setPriority(NotificationCompat.PRIORITY_LOW);
+    if (extras.getString("color") != null) {
+      try {
+        int color = Integer.parseInt(extras.getString("color"));
+        mBuilder.setColor(color);
+      } catch (NumberFormatException e) {}
     }
 
-		Boolean bigView = extras.getBoolean("bigview");
-		if (bigView) {
-			mBuilder.setStyle(new NotificationCompat.BigTextStyle().bigText(message));
+		String message = extras.getString("message");
+    mBuilder.setContentText(Html.fromHtml(message));
+
+		String bigView = extras.getString("bigview");
+		if (bigView != null && bigView.equals("true")) {
+			mBuilder.setStyle(new NotificationCompat.BigTextStyle().bigText(Html.fromHtml(message)));
 		}
 
-    ArrayList<String> lines = extras.getString("inboxLines");
-    if (lines) {
-      Notification.InboxStyle style = new Notification.InboxStyle()
-        .setContentTitle(extras.getString("inboxTitle"))
-        .setSummaryText(extras.getString("inboxSummary"));
+    String linesStr = extras.getString("inboxLines");
+    if (linesStr != null) {
+      try {
+        JSONArray array = new JSONArray(linesStr);
+        NotificationCompat.InboxStyle style = new NotificationCompat.InboxStyle()
+          .setBigContentTitle(Html.fromHtml(extras.getString("inboxTitle")))
+          .setSummaryText(Html.fromHtml(extras.getString("inboxSummary")));
 
-      for (String line: lines) {
-        style.addLine(lines);
+        for (int i = 0; i < array.length(); i++) {
+          Log.d(TAG, array.getString(i));
+          style.addLine(Html.fromHtml(array.getString(i)));
+        }
+
+        mBuilder.setStyle(style);
+      } catch (JSONException e) {
+        Log.e(TAG, "Error parsing JSON for inbox.", e);
       }
-
-      mBuilder.setStyle(style);
     }
 
 		String msgcnt = extras.getString("msgcnt");
